@@ -7,5 +7,16 @@
     "verified": "11"
   },
   "description": "Allows the user to create a queue of movement orders for any number of tokens, and then have them be executed at the same time.",
+  "authors": [
+    {
+      "name": "EndlesNights",
+      "discord": "EndlesNights#9000",
+      "email": "endlesnights@gmail.com",
+      "url": "https://github.com/EndlesNights"
+    }
+  ],
+  "esmodules": [
+    "./main.js"
+  ],
   "url": "https://github.com/EndlesNights/MovementQueue"
 }
