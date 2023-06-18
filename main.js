@@ -11,6 +11,8 @@ Hooks.once("init", async function() {
     game.MovementQueue.tokenTakeSegmentedPath = tokenTakeSegmentedPath;
     game.MovementQueue.selectTokensTakeSegmentedPath = selectTokensTakeSegmentedPath;
     game.MovementQueue.allTokensTakeSegmentedPath = allTokensTakeSegmentedPath;
+
+    game.MovementQueue.drawTokenPathGerments = drawTokenPathGerments;
 });
 
 function tokenTakeSegmentedPath(token){
@@ -106,9 +108,43 @@ function unsetSelectSegmentFlag(){
     });
 }
 
+function drawTokenPathGerments(token){
+
+    const segmentsData = token.document.getFlag(MODULE_ID, "segments")
+    console.log(segmentsData)
+    if(!segmentsData){
+        return;
+    }
+
+    if(!canvas.MovementQueueDrawings){
+        canvas.MovementQueueDrawings = {};
+    }
+
+    const tokenID = token.id
+    if(canvas.MovementQueueDrawings[tokenID]){
+        //delete any existing data
+    }
+
+    canvas.MovementQueueDrawings[tokenID] = [];
+
+    let color = "0x00FF00";
+    let thickness = 3;
+
+    const position = token.center;
+    canvas.MovementQueueDrawings[tokenID][0] = new PIXI.Graphics();
+    canvas.MovementQueueDrawings[tokenID][0].lineStyle(thickness, color).moveTo(position.x, position.y)
+
+    for(let i = 0; i < segmentsData.length; i++){
+
+        const dx = (segmentsData[i].B.x - segmentsData[i].A.x);
+        const dy = (segmentsData[i].B.y - segmentsData[i].A.y);
+
+        position.x += dx;
+        position.y += dy;
+        canvas.MovementQueueDrawings[tokenID][0].lineTo(position.x, position.y);
 
 
+    }
 
-canvas.tokens.controlled.forEach((token) => {
-    console.log(token);
-});
+    canvas.environment.children[0].addChild(canvas.MovementQueueDrawings[tokenID][0]);
+}
