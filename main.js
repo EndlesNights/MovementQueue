@@ -12,7 +12,9 @@ Hooks.once("init", async function() {
     game.MovementQueue.selectTokensTakeSegmentedPath = selectTokensTakeSegmentedPath;
     game.MovementQueue.allTokensTakeSegmentedPath = allTokensTakeSegmentedPath;
 
-    game.MovementQueue.drawTokenPathGerments = drawTokenPathGerments;
+    game.MovementQueue.drawTokenPath = drawTokenPath;
+
+    game.MovementQueue.clearAllTokenPathDrawings = clearAllTokenPathDrawings;
 });
 
 function tokenTakeSegmentedPath(token){
@@ -108,7 +110,7 @@ function unsetSelectSegmentFlag(){
     });
 }
 
-function drawTokenPathGerments(token){
+function drawTokenPath(token){
 
     const segmentsData = token.document.getFlag(MODULE_ID, "segments")
     console.log(segmentsData)
@@ -122,7 +124,8 @@ function drawTokenPathGerments(token){
 
     const tokenID = token.id
     if(canvas.MovementQueueDrawings[tokenID]){
-        //delete any existing data
+        clearTokenPathDrawing(token);
+        canvas.MovementQueueDrawings = {};
     }
 
     // canvas.MovementQueueDrawings[tokenID] = [];
@@ -147,4 +150,25 @@ function drawTokenPathGerments(token){
     }
 
     canvas.environment.children[0].addChild(canvas.MovementQueueDrawings[tokenID]);
+}
+
+function clearTokenPathDrawing(token){
+    const tokenID = token.id
+    if(!canvas.MovementQueueDrawings[tokenID]){
+        return;
+    }
+
+    if(canvas.MovementQueueDrawings[tokenID].destroyed){
+        return;
+    }
+
+    canvas.MovementQueueDrawings[tokenID].destroy();
+    delete canvas.MovementQueueDrawings[tokenID];
+}
+
+function clearAllTokenPathDrawings(){
+    for(const [tokenID, drawing] of Object.entries(canvas.MovementQueueDrawings)){
+        canvas.MovementQueueDrawings[tokenID].destroy();
+        delete canvas.MovementQueueDrawings[tokenID];
+    }
 }
