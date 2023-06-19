@@ -125,14 +125,14 @@ function drawTokenPathGerments(token){
         //delete any existing data
     }
 
-    canvas.MovementQueueDrawings[tokenID] = [];
+    // canvas.MovementQueueDrawings[tokenID] = [];
 
     let color = "0x00FF00";
     let thickness = 3;
 
     const position = token.center;
-    canvas.MovementQueueDrawings[tokenID][0] = new PIXI.Graphics();
-    canvas.MovementQueueDrawings[tokenID][0].lineStyle(thickness, color).moveTo(position.x, position.y)
+    canvas.MovementQueueDrawings[tokenID] = new PIXI.Graphics();
+    canvas.MovementQueueDrawings[tokenID].lineStyle(thickness, color).moveTo(position.x, position.y)
 
     for(let i = 0; i < segmentsData.length; i++){
 
@@ -141,10 +141,10 @@ function drawTokenPathGerments(token){
 
         position.x += dx;
         position.y += dy;
-        canvas.MovementQueueDrawings[tokenID][0].lineTo(position.x, position.y);
+        canvas.MovementQueueDrawings[tokenID].lineTo(position.x, position.y);
 
 
     }
 
-    canvas.environment.children[0].addChild(canvas.MovementQueueDrawings[tokenID][0]);
+    canvas.environment.children[0].addChild(canvas.MovementQueueDrawings[tokenID]);
 }
