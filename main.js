@@ -13,6 +13,7 @@ Hooks.once("init", async function() {
     game.MovementQueue.allTokensTakeSegmentedPath = allTokensTakeSegmentedPath;
 
     game.MovementQueue.drawTokenPath = drawTokenPath;
+    game.MovementQueue.drawAllTokenPaths = drawAllTokenPaths;
 
     game.MovementQueue.clearAllTokenPathDrawings = clearAllTokenPathDrawings;
 });
@@ -152,6 +153,15 @@ function drawTokenPath(token){
     canvas.environment.children[0].addChild(canvas.MovementQueueDrawings[tokenID]);
 }
 
+function drawAllTokenPaths(){
+    clearAllTokenPathDrawings();
+
+    const allSceneTokens = canvas.scene.tokens;
+    allSceneTokens.forEach((token) => {
+        drawTokenPath(token.object);
+    });
+}
+
 function clearTokenPathDrawing(token){
     const tokenID = token.id
     if(!canvas.MovementQueueDrawings[tokenID]){
@@ -167,6 +177,9 @@ function clearTokenPathDrawing(token){
 }
 
 function clearAllTokenPathDrawings(){
+    if(!canvas.MovementQueueDrawings){
+        return;
+    }
     for(const [tokenID, drawing] of Object.entries(canvas.MovementQueueDrawings)){
         canvas.MovementQueueDrawings[tokenID].destroy();
         delete canvas.MovementQueueDrawings[tokenID];
