@@ -1,6 +1,8 @@
 const MODULE_ID = "movement-queue";
+const arrowHeadLength = 30;
+const arrowHeadWidth = 15;
 
-Hooks.once("init", async function() {
+Hooks.once("init", async function () {
     game.MovementQueue = {};
 
     game.MovementQueue.setSelectSegmentFlag = setSelectSegmentFlag;
@@ -18,26 +20,26 @@ Hooks.once("init", async function() {
     game.MovementQueue.clearAllTokenPathDrawings = clearAllTokenPathDrawings;
 });
 
-function tokenTakeSegmentedPath(token){
+function tokenTakeSegmentedPath(token) {
     const segmentsData = token.document.getFlag(MODULE_ID, "segments");
-    if(!segmentsData){
+    if (!segmentsData) {
         return ui.notifications.info(`No flagged segment data!`);
     }
 
     const ruler = new Ruler();
     ruler.segments = [];
-    for(const seg of segmentsData){
+    for (const seg of segmentsData) {
         const ray = new Ray(seg.A, seg.B);
-        ruler.segments.push({ray});
+        ruler.segments.push({ ray });
     }
 
     ruler._animateMovement(token);
 }
 
-function selectTokensTakeSegmentedPath(){
+function selectTokensTakeSegmentedPath() {
     const selectedTokens = canvas.tokens.controlled;
     if (selectedTokens.length === 0) {
-      return ui.notifications.error("No tokens selected.");
+        return ui.notifications.error("No tokens selected.");
     }
 
     selectedTokens.forEach((token) => {
@@ -46,20 +48,20 @@ function selectTokensTakeSegmentedPath(){
     });
 }
 
-function allTokensTakeSegmentedPath(){
+function allTokensTakeSegmentedPath() {
     const allSceneTokens = canvas.scene.tokens;
     allSceneTokens.forEach((token) => {
         console.log(token)
         const segmentsData = token.object.document.getFlag(MODULE_ID, "segments");
-        if(segmentsData){
+        if (segmentsData) {
             tokenTakeSegmentedPath(token.object);
             unsetTokenSegmentFlag(token.object);
         }
     });
 }
 
-function setTokenSegmentFlag(token){
-    if(!canvas.controls?.ruler.segments){
+async function setTokenSegmentFlag(token) {
+    if (!canvas.controls?.ruler.segments) {
         return ui.notifications.info(`No Ruler Segment Found!`);
     }
 
@@ -67,42 +69,45 @@ function setTokenSegmentFlag(token){
     console.log(canvas.controls.ruler.segments);
 
     const segments = [];
-    for(const segment of canvas.controls.ruler.segments){
+    for (const segment of canvas.controls.ruler.segments) {
+        await segments.push({ A: segment.ray.A, B: segment.ray.B });
         console.log(segment)
-        segments.push({A: segment.ray.A, B: segment.ray.B});
     }
-    
-    token.document.setFlag(MODULE_ID, "segments", segments);
+
+    return await token.document.setFlag(MODULE_ID, "segments", segments);
     // token.document.setFlag(MODULE_ID, "segments", "SomeText");
 }
 
-function setSelectSegmentFlag(){
-    
+async function setSelectSegmentFlag() {
     const selectedTokens = canvas.tokens.controlled;
     if (selectedTokens.length === 0) {
-      return ui.notifications.error("No tokens selected.");
+        return ui.notifications.error("No tokens selected.");
     }
 
-    if(!canvas.controls?.ruler.segments){
+    if (!canvas.controls?.ruler.segments) {
         return ui.notifications.info(`No Ruler Segment Found!`);
     }
 
-    selectedTokens.forEach((token) => {
-        setTokenSegmentFlag(token);
+    // await selectedTokens.forEach(async (token) => {
+    //     ui.notifications.info(`Flag set for ${token.name}.`); 
+    //     return await setTokenSegmentFlag(token);
+    // });
+    for (const token of selectedTokens) {
+        await setTokenSegmentFlag(token);
         ui.notifications.info(`Flag set for ${token.name}.`);
-    });
-    
+    }
+
 }
 
-function unsetTokenSegmentFlag(token){
+function unsetTokenSegmentFlag(token) {
     token.document.unsetFlag(MODULE_ID, "segments");
 }
 
-function unsetSelectSegmentFlag(){
+function unsetSelectSegmentFlag() {
 
     let selectedTokens = canvas.tokens.controlled;
     if (selectedTokens.length === 0) {
-      return ui.notifications.error("No tokens selected.");
+        return ui.notifications.error("No tokens selected.");
     }
 
     selectedTokens.forEach((token) => {
@@ -111,21 +116,22 @@ function unsetSelectSegmentFlag(){
     });
 }
 
-function drawTokenPath(token){
+async function drawTokenPath(token) {
 
-    const segmentsData = token.document.getFlag(MODULE_ID, "segments")
-    console.log(segmentsData)
-    if(!segmentsData){
+    const segmentsData = await token.document.getFlag(MODULE_ID, "segments")
+    if (!segmentsData) {
         return;
     }
+    console.log(segmentsData)
 
-    if(!canvas.MovementQueueDrawings){
+
+    if (!canvas.MovementQueueDrawings) {
         canvas.MovementQueueDrawings = {};
     }
 
     const tokenID = token.id
-    if(canvas.MovementQueueDrawings[tokenID]){
-        clearTokenPathDrawing(token);
+    if (canvas.MovementQueueDrawings[tokenID]) {
+        await clearTokenPathDrawing(token);
         canvas.MovementQueueDrawings = {};
     }
 
@@ -136,39 +142,91 @@ function drawTokenPath(token){
 
     const position = token.center;
     canvas.MovementQueueDrawings[tokenID] = new PIXI.Graphics();
-    canvas.MovementQueueDrawings[tokenID].lineStyle(thickness, color).moveTo(position.x, position.y)
+    // canvas.MovementQueueDrawings[tokenID].lineStyle(thickness, color).moveTo(position.x, position.y)
+    canvas.MovementQueueDrawings[tokenID].lineStyle({
+        width: thickness,
+        color,
+        join: "round",
+        cap: "round"
+    });
+    canvas.MovementQueueDrawings[tokenID].moveTo(position.x, position.y)
 
-    for(let i = 0; i < segmentsData.length; i++){
+    if (!segmentsData.length) return;
+
+    for (let i = 0; i < segmentsData.length; i++) {
 
         const dx = (segmentsData[i].B.x - segmentsData[i].A.x);
         const dy = (segmentsData[i].B.y - segmentsData[i].A.y);
-
         position.x += dx;
         position.y += dy;
+
         canvas.MovementQueueDrawings[tokenID].lineTo(position.x, position.y);
-
-
     }
 
-    canvas.environment.children[0].addChild(canvas.MovementQueueDrawings[tokenID]);
+    //draw arrowHead at end
+    const lastSegment = getLastValidSegment(segmentsData);
+    if(lastSegment){
+        const arrowLength = 30;  // Length of the arrowhead lines
+        const arrowAngle = Math.PI / 6;  // Angle between the arrow lines (30 degrees)
+    
+        // Calculate the angle of the last segment
+        const lineAngle = Math.atan2(lastSegment.B.y - lastSegment.A.y, lastSegment.B.x - lastSegment.A.x);
+    
+        // Calculate the two arrowhead points
+        const arrowPoint1 = {
+            x: lastSegment.B.x - arrowLength * Math.cos(lineAngle - arrowAngle),
+            y: lastSegment.B.y - arrowLength * Math.sin(lineAngle - arrowAngle)
+        };
+        const arrowPoint2 = {
+            x: lastSegment.B.x - arrowLength * Math.cos(lineAngle + arrowAngle),
+            y: lastSegment.B.y - arrowLength * Math.sin(lineAngle + arrowAngle)
+        };
+    
+        // Draw the arrowhead using two lines
+        canvas.MovementQueueDrawings[tokenID].moveTo(lastSegment.B.x, lastSegment.B.y);
+        canvas.MovementQueueDrawings[tokenID].lineTo(arrowPoint1.x, arrowPoint1.y);
+    
+        canvas.MovementQueueDrawings[tokenID].moveTo(lastSegment.B.x, lastSegment.B.y);
+        canvas.MovementQueueDrawings[tokenID].lineTo(arrowPoint2.x, arrowPoint2.y);
+    }
+    
+    return canvas.environment.children[0].addChild(canvas.MovementQueueDrawings[tokenID]);
 }
 
-function drawAllTokenPaths(){
-    clearAllTokenPathDrawings();
+// Helper function to find the last valid segment with non-zero displacement
+function getLastValidSegment(segments) {
+    for (let i = segments.length - 1; i >= 0; i--) {
+        const dx = segments[i].B.x - segments[i].A.x;
+        const dy = segments[i].B.y - segments[i].A.y;
+        // Check if displacement is non-zero
+        if (dx !== 0 || dy !== 0) {
+            return segments[i];
+        }
+    }
+    // If all segments have zero displacement, return null or handle accordingly
+    return null;
+}
+
+async function drawAllTokenPaths() {
+    await clearAllTokenPathDrawings();
 
     const allSceneTokens = canvas.scene.tokens;
-    allSceneTokens.forEach((token) => {
-        drawTokenPath(token.object);
-    });
+    // await allSceneTokens.forEach(async (token) => {
+    //     await drawTokenPath(token.object);
+    // });
+
+    for (const token of allSceneTokens) {
+        await drawTokenPath(token.object);
+    }
 }
 
-function clearTokenPathDrawing(token){
+async function clearTokenPathDrawing(token) {
     const tokenID = token.id
-    if(!canvas.MovementQueueDrawings[tokenID]){
+    if (!canvas.MovementQueueDrawings[tokenID]) {
         return;
     }
 
-    if(canvas.MovementQueueDrawings[tokenID].destroyed){
+    if (canvas.MovementQueueDrawings[tokenID].destroyed) {
         return;
     }
 
@@ -176,11 +234,11 @@ function clearTokenPathDrawing(token){
     delete canvas.MovementQueueDrawings[tokenID];
 }
 
-function clearAllTokenPathDrawings(){
-    if(!canvas.MovementQueueDrawings){
+async function clearAllTokenPathDrawings() {
+    if (!canvas.MovementQueueDrawings) {
         return;
     }
-    for(const [tokenID, drawing] of Object.entries(canvas.MovementQueueDrawings)){
+    for (const [tokenID, drawing] of Object.entries(canvas.MovementQueueDrawings)) {
         canvas.MovementQueueDrawings[tokenID].destroy();
         delete canvas.MovementQueueDrawings[tokenID];
     }
