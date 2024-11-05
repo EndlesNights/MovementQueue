@@ -88,10 +88,6 @@ async function setSelectSegmentFlag() {
         return ui.notifications.info(`No Ruler Segment Found!`);
     }
 
-    // await selectedTokens.forEach(async (token) => {
-    //     ui.notifications.info(`Flag set for ${token.name}.`); 
-    //     return await setTokenSegmentFlag(token);
-    // });
     for (const token of selectedTokens) {
         await setTokenSegmentFlag(token);
         ui.notifications.info(`Flag set for ${token.name}.`);
@@ -165,31 +161,36 @@ async function drawTokenPath(token) {
 
     //draw arrowHead at end
     const lastSegment = getLastValidSegment(segmentsData);
-    if(lastSegment){
+    if (lastSegment) {
+        // Use the total final position as the end of the last segment
         const arrowLength = 30;  // Length of the arrowhead lines
         const arrowAngle = Math.PI / 6;  // Angle between the arrow lines (30 degrees)
-    
-        // Calculate the angle of the last segment
-        const lineAngle = Math.atan2(lastSegment.B.y - lastSegment.A.y, lastSegment.B.x - lastSegment.A.x);
-    
-        // Calculate the two arrowhead points
+
+        // Calculate the final displacement of the last valid segment
+        const lastDx = lastSegment.B.x - lastSegment.A.x;
+        const lastDy = lastSegment.B.y - lastSegment.A.y;
+
+        // Calculate the angle of the last segment (based on displacement)
+        const lineAngle = Math.atan2(lastDy, lastDx);
+
+        // Calculate the two arrowhead points relative to the current position
         const arrowPoint1 = {
-            x: lastSegment.B.x - arrowLength * Math.cos(lineAngle - arrowAngle),
-            y: lastSegment.B.y - arrowLength * Math.sin(lineAngle - arrowAngle)
+            x: position.x - arrowLength * Math.cos(lineAngle - arrowAngle),
+            y: position.y - arrowLength * Math.sin(lineAngle - arrowAngle)
         };
         const arrowPoint2 = {
-            x: lastSegment.B.x - arrowLength * Math.cos(lineAngle + arrowAngle),
-            y: lastSegment.B.y - arrowLength * Math.sin(lineAngle + arrowAngle)
+            x: position.x - arrowLength * Math.cos(lineAngle + arrowAngle),
+            y: position.y - arrowLength * Math.sin(lineAngle + arrowAngle)
         };
-    
+
         // Draw the arrowhead using two lines
-        canvas.MovementQueueDrawings[tokenID].moveTo(lastSegment.B.x, lastSegment.B.y);
+        canvas.MovementQueueDrawings[tokenID].moveTo(position.x, position.y);
         canvas.MovementQueueDrawings[tokenID].lineTo(arrowPoint1.x, arrowPoint1.y);
-    
-        canvas.MovementQueueDrawings[tokenID].moveTo(lastSegment.B.x, lastSegment.B.y);
+
+        canvas.MovementQueueDrawings[tokenID].moveTo(position.x, position.y);
         canvas.MovementQueueDrawings[tokenID].lineTo(arrowPoint2.x, arrowPoint2.y);
     }
-    
+
     return canvas.environment.children[0].addChild(canvas.MovementQueueDrawings[tokenID]);
 }
 
@@ -211,9 +212,6 @@ async function drawAllTokenPaths() {
     await clearAllTokenPathDrawings();
 
     const allSceneTokens = canvas.scene.tokens;
-    // await allSceneTokens.forEach(async (token) => {
-    //     await drawTokenPath(token.object);
-    // });
 
     for (const token of allSceneTokens) {
         await drawTokenPath(token.object);
